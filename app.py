@@ -1,4 +1,3 @@
-```python
 import os
 import io
 import csv
@@ -2724,4 +2723,4 @@ if __name__ == "__main__":
         debug=False
 
     )
-```
+
