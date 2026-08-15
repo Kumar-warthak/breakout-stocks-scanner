@@ -91,36 +91,39 @@ load_dotenv(ENV_FILE)
 # MYSQL_HOST
 # MYSQL_PORT
 
+# ============================================================
+# DATABASE SETTINGS
+# ============================================================
+
 DB_NAME = (
-    os.getenv("MYSQLDATABASE")
-    or os.getenv("MYSQL_DATABASE")
+    os.getenv("MYSQL_DATABASE")
+    or os.getenv("MYSQLDATABASE")
     or "stock_breakout3"
 )
 
 DB_USER = (
-    os.getenv("MYSQLUSER")
-    or os.getenv("MYSQL_USER")
+    os.getenv("MYSQL_USER")
+    or os.getenv("MYSQLUSER")
     or "root"
 )
 
 DB_PASSWORD = (
-    os.getenv("MYSQLPASSWORD")
-    or os.getenv("MYSQL_PASSWORD")
+    os.getenv("MYSQL_PASSWORD")
+    or os.getenv("MYSQLPASSWORD")
     or ""
 )
 
 DB_HOST = (
-    os.getenv("MYSQLHOST")
-    or os.getenv("MYSQL_HOST")
+    os.getenv("MYSQL_HOST")
+    or os.getenv("MYSQLHOST")
     or "127.0.0.1"
 )
 
 DB_PORT = int(
-    os.getenv("MYSQLPORT")
-    or os.getenv("MYSQL_PORT")
+    os.getenv("MYSQL_PORT")
+    or os.getenv("MYSQLPORT")
     or "3306"
 )
-
 
 # ============================================================
 # DIAGNOSTIC
