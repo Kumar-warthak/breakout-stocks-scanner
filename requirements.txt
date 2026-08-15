@@ -4,3 +4,5 @@ PyMySQL==1.1.1
 openpyxl==3.1.5
 python-dotenv==1.1.1
 gunicorn==23.0.0
+pandas
+requests
