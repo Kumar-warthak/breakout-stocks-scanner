@@ -4,6 +4,7 @@ import csv
 import json
 import time
 from datetime import datetime, date
+from urllib.parse import urlparse
 
 import pymysql
 
@@ -104,9 +105,38 @@ def load_db_settings():
     time. This helper is called again later (lazily, on first
     request) so we pick up the resolved values instead of relying
     on a value cached at import time.
+
+    MYSQL_URL (e.g. ${{MySQL.MYSQL_URL}}) is a complete, pre-built
+    connection string supplied by the MySQL service template and is
+    checked first. Building the connection piece-by-piece from
+    individual reference variables (MYSQL_HOST, MYSQL_USER,
+    MYSQL_PASSWORD, etc.) is fragile: if any one of those variables
+    fails to resolve at runtime (most commonly MYSQL_PASSWORD), the
+    app ends up connecting with a blank password. Preferring the
+    ready-made MYSQL_URL avoids that failure mode entirely.
     """
 
+    mysql_url = (
+        os.getenv("MYSQL_URL")
+        or os.getenv("MYSQLURL")
+        or ""
+    ).strip()
+
+    if mysql_url:
+
+        parsed = urlparse(mysql_url)
+
+        return {
+            "url": mysql_url,
+            "name": (parsed.path or "").lstrip("/") or "stock_breakout3",
+            "user": parsed.username or "root",
+            "password": parsed.password or "",
+            "host": parsed.hostname or "mysql.railway.internal",
+            "port": parsed.port or 3306,
+        }
+
     return {
+        "url": None,
         "name": (
             os.getenv("MYSQL_DATABASE")
             or os.getenv("MYSQLDATABASE")
@@ -142,6 +172,28 @@ def load_db_settings():
 
 
 def build_db_uri(settings):
+    """
+    Build the SQLAlchemy connection URI.
+
+    Prefers the pre-built MYSQL_URL (see load_db_settings) when
+    available, converting its scheme to the pymysql driver expected
+    by SQLAlchemy. Falls back to assembling the URI from individual
+    components otherwise.
+    """
+
+    mysql_url = settings.get("url")
+
+    if mysql_url:
+
+        if mysql_url.startswith("mysql+pymysql://"):
+
+            return mysql_url
+
+        if mysql_url.startswith("mysql://"):
+
+            return mysql_url.replace("mysql://", "mysql+pymysql://", 1)
+
+        return mysql_url
 
     return (
         "mysql+pymysql://"
