@@ -125,7 +125,13 @@ def load_db_settings():
         "host": (
             os.getenv("MYSQL_HOST")
             or os.getenv("MYSQLHOST")
-            or "127.0.0.1"
+            or os.getenv("RAILWAY_PRIVATE_DOMAIN_MYSQL")
+            # Railway reference variables (e.g. ${{MySQL.MYSQLHOST}})
+            # can fail to resolve at runtime, leaving MYSQL_HOST
+            # empty. In that case, prefer the MySQL service's
+            # Railway private networking domain over localhost so we
+            # don't try to connect to the app's own container.
+            or "mysql.railway.internal"
         ),
         "port": int(
             os.getenv("MYSQL_PORT")
