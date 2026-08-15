@@ -95,35 +95,63 @@ load_dotenv(ENV_FILE)
 # DATABASE SETTINGS
 # ============================================================
 
-DB_NAME = (
-    os.getenv("MYSQL_DATABASE")
-    or os.getenv("MYSQLDATABASE")
-    or "stock_breakout3"
-)
+def load_db_settings():
+    """
+    Read DB connection settings fresh from the environment.
 
-DB_USER = (
-    os.getenv("MYSQL_USER")
-    or os.getenv("MYSQLUSER")
-    or "root"
-)
+    Railway resolves reference variables (e.g. ${{MySQL.MYSQLHOST}})
+    at runtime, and they may not be present yet at module import
+    time. This helper is called again later (lazily, on first
+    request) so we pick up the resolved values instead of relying
+    on a value cached at import time.
+    """
 
-DB_PASSWORD = (
-    os.getenv("MYSQL_PASSWORD")
-    or os.getenv("MYSQLPASSWORD")
-    or ""
-)
+    return {
+        "name": (
+            os.getenv("MYSQL_DATABASE")
+            or os.getenv("MYSQLDATABASE")
+            or "stock_breakout3"
+        ),
+        "user": (
+            os.getenv("MYSQL_USER")
+            or os.getenv("MYSQLUSER")
+            or "root"
+        ),
+        "password": (
+            os.getenv("MYSQL_PASSWORD")
+            or os.getenv("MYSQLPASSWORD")
+            or ""
+        ),
+        "host": (
+            os.getenv("MYSQL_HOST")
+            or os.getenv("MYSQLHOST")
+            or "127.0.0.1"
+        ),
+        "port": int(
+            os.getenv("MYSQL_PORT")
+            or os.getenv("MYSQLPORT")
+            or "3306"
+        ),
+    }
 
-DB_HOST = (
-    os.getenv("MYSQL_HOST")
-    or os.getenv("MYSQLHOST")
-    or "127.0.0.1"
-)
 
-DB_PORT = int(
-    os.getenv("MYSQL_PORT")
-    or os.getenv("MYSQLPORT")
-    or "3306"
-)
+def build_db_uri(settings):
+
+    return (
+        "mysql+pymysql://"
+        f"{settings['user']}:{settings['password']}"
+        f"@{settings['host']}:{settings['port']}"
+        f"/{settings['name']}"
+    )
+
+
+_initial_db_settings = load_db_settings()
+
+DB_NAME = _initial_db_settings["name"]
+DB_USER = _initial_db_settings["user"]
+DB_PASSWORD = _initial_db_settings["password"]
+DB_HOST = _initial_db_settings["host"]
+DB_PORT = _initial_db_settings["port"]
 
 # ============================================================
 # DIAGNOSTIC
@@ -166,16 +194,28 @@ print("")
 # ============================================================
 
 def ensure_database():
+    """
+    Best-effort creation of the target MySQL database.
+
+    Reads connection settings fresh from the environment (rather
+    than relying on module-level globals) so that Railway reference
+    variables which resolve after import are picked up. Any
+    connection failure is caught and logged instead of raised, so
+    the app can still start even if MySQL is not reachable yet
+    (e.g. the MySQL service is still booting).
+    """
+
+    settings = load_db_settings()
 
     connection = None
 
     try:
 
         connection = pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
+            host=settings["host"],
+            port=settings["port"],
+            user=settings["user"],
+            password=settings["password"],
             charset="utf8mb4",
             autocommit=True
         )
@@ -185,15 +225,17 @@ def ensure_database():
             cursor.execute(
                 f"""
                 CREATE DATABASE IF NOT EXISTS
-                `{DB_NAME}`
+                `{settings['name']}`
                 CHARACTER SET utf8mb4
                 COLLATE utf8mb4_unicode_ci
                 """
             )
 
         print(
-            f"MySQL database ready: {DB_NAME}"
+            f"MySQL database ready: {settings['name']}"
         )
+
+        return True
 
     except Exception as error:
 
@@ -204,22 +246,19 @@ def ensure_database():
         print(error)
         print("")
         print(
-            "Check MYSQL_USER and MYSQL_PASSWORD "
-            "in your .env file."
+            "Database will be initialized lazily on first "
+            "request once MySQL is reachable."
         )
         print("=" * 60)
         print("")
 
-        raise
+        return False
 
     finally:
 
         if connection:
 
             connection.close()
-
-
-ensure_database()
 
 
 # ============================================================
@@ -235,12 +274,7 @@ app = Flask(__name__)
 
 app.config[
     "SQLALCHEMY_DATABASE_URI"
-] = (
-    "mysql+pymysql://"
-    f"{DB_USER}:{DB_PASSWORD}"
-    f"@{DB_HOST}:{DB_PORT}"
-    f"/{DB_NAME}"
-)
+] = build_db_uri(_initial_db_settings)
 
 app.config[
     "SQLALCHEMY_TRACK_MODIFICATIONS"
@@ -345,16 +379,69 @@ class StockMaster(db.Model):
 
 
 # ============================================================
-# CREATE TABLE
+# LAZY DATABASE INITIALIZATION
 # ============================================================
+#
+# The database (and its tables) are created on the first
+# incoming request instead of at import time. This gives
+# Railway's reference variables (e.g. ${{MySQL.MYSQLHOST}})
+# time to resolve, and lets the app boot even if the MySQL
+# service is not reachable yet.
 
-with app.app_context():
+_db_initialized = False
 
-    db.create_all()
 
-    print(
-        "MySQL table ready: stock_master"
-    )
+def initialize_database():
+
+    global _db_initialized, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT
+
+    if _db_initialized:
+
+        return
+
+    settings = load_db_settings()
+
+    DB_HOST = settings["host"]
+    DB_USER = settings["user"]
+    DB_PASSWORD = settings["password"]
+    DB_NAME = settings["name"]
+    DB_PORT = settings["port"]
+
+    app.config["SQLALCHEMY_DATABASE_URI"] = build_db_uri(settings)
+
+    db_ready = ensure_database()
+
+    if not db_ready:
+
+        return
+
+    try:
+
+        db.create_all()
+
+        print(
+            "MySQL table ready: stock_master"
+        )
+
+        _db_initialized = True
+
+    except Exception as error:
+
+        print("")
+        print("=" * 60)
+        print("MYSQL TABLE CREATION ERROR")
+        print("=" * 60)
+        print(error)
+        print("=" * 60)
+        print("")
+
+
+@app.before_request
+def _ensure_database_ready():
+
+    if not _db_initialized:
+
+        initialize_database()
 
 
 # ============================================================
