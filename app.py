@@ -112,6 +112,7 @@ DB_PASSWORD = (
 DB_HOST = (
     os.getenv("MYSQLHOST")
     or os.getenv("MYSQL_HOST")
+    or "127.0.0.1"
 )
 
 DB_PORT = int(
@@ -120,12 +121,6 @@ DB_PORT = int(
     or "3306"
 )
 
-# Make sure Railway doesn't silently fall back to localhost
-if not DB_HOST:
-    raise RuntimeError(
-        "MySQL host is not configured. "
-        "MYSQLHOST / MYSQL_HOST is missing."
-    )
 
 # ============================================================
 # DIAGNOSTIC
