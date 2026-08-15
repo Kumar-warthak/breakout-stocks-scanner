@@ -45,33 +45,87 @@ load_dotenv(ENV_FILE)
 # DATABASE SETTINGS
 # ============================================================
 
-DB_NAME = os.getenv(
-    "MYSQL_DATABASE",
-    "stock_breakout3"
+# DB_NAME = os.getenv(
+#     "MYSQL_DATABASE",
+#     "stock_breakout3"
+# )
+
+# DB_USER = os.getenv(
+#     "MYSQL_USER",
+#     "root"
+# )
+
+# DB_PASSWORD = os.getenv(
+#     "MYSQL_PASSWORD",
+#     ""
+# )
+
+# DB_HOST = os.getenv(
+#     "MYSQL_HOST",
+#     "127.0.0.1"
+# )
+
+# DB_PORT = int(
+#     os.getenv(
+#         "MYSQL_PORT",
+#         "3306"
+#     )
+# )
+
+
+# ==================================
+# DATABASE CONFIGURATION
+# ==================================
+
+# Railway MySQL uses:
+# MYSQLDATABASE
+# MYSQLUSER
+# MYSQLPASSWORD
+# MYSQLHOST
+# MYSQLPORT
+
+# Local .env can still use:
+# MYSQL_DATABASE
+# MYSQL_USER
+# MYSQL_PASSWORD
+# MYSQL_HOST
+# MYSQL_PORT
+
+DB_NAME = (
+    os.getenv("MYSQLDATABASE")
+    or os.getenv("MYSQL_DATABASE")
+    or "stock_breakout3"
 )
 
-DB_USER = os.getenv(
-    "MYSQL_USER",
-    "root"
+DB_USER = (
+    os.getenv("MYSQLUSER")
+    or os.getenv("MYSQL_USER")
+    or "root"
 )
 
-DB_PASSWORD = os.getenv(
-    "MYSQL_PASSWORD",
-    ""
+DB_PASSWORD = (
+    os.getenv("MYSQLPASSWORD")
+    or os.getenv("MYSQL_PASSWORD")
+    or ""
 )
 
-DB_HOST = os.getenv(
-    "MYSQL_HOST",
-    "127.0.0.1"
+DB_HOST = (
+    os.getenv("MYSQLHOST")
+    or os.getenv("MYSQL_HOST")
 )
 
 DB_PORT = int(
-    os.getenv(
-        "MYSQL_PORT",
-        "3306"
-    )
+    os.getenv("MYSQLPORT")
+    or os.getenv("MYSQL_PORT")
+    or "3306"
 )
 
+# Make sure Railway doesn't silently fall back to localhost
+if not DB_HOST:
+    raise RuntimeError(
+        "MySQL host is not configured. "
+        "MYSQLHOST / MYSQL_HOST is missing."
+    )
 
 # ============================================================
 # DIAGNOSTIC
