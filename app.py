@@ -1,3 +1,4 @@
+```python
 import os
 import io
 import csv
@@ -46,74 +47,18 @@ load_dotenv(ENV_FILE)
 # DATABASE SETTINGS
 # ============================================================
 
-# DB_NAME = os.getenv(
-#     "MYSQL_DATABASE",
-#     "stock_breakout3"
-# )
-
-# DB_USER = os.getenv(
-#     "MYSQL_USER",
-#     "root"
-# )
-
-# DB_PASSWORD = os.getenv(
-#     "MYSQL_PASSWORD",
-#     ""
-# )
-
-# DB_HOST = os.getenv(
-#     "MYSQL_HOST",
-#     "127.0.0.1"
-# )
-
-# DB_PORT = int(
-#     os.getenv(
-#         "MYSQL_PORT",
-#         "3306"
-#     )
-# )
-
-
-# ==================================
-# DATABASE CONFIGURATION
-# ==================================
-
-# Railway MySQL uses:
-# MYSQLDATABASE
-# MYSQLUSER
-# MYSQLPASSWORD
-# MYSQLHOST
-# MYSQLPORT
-
-# Local .env can still use:
-# MYSQL_DATABASE
-# MYSQL_USER
-# MYSQL_PASSWORD
-# MYSQL_HOST
-# MYSQL_PORT
-
-# ============================================================
-# DATABASE SETTINGS
-# ============================================================
-
 def load_db_settings():
     """
-    Read DB connection settings fresh from the environment.
+    Load MySQL connection from MYSQL_URL.
 
-    Railway resolves reference variables (e.g. ${{MySQL.MYSQLHOST}})
-    at runtime, and they may not be present yet at module import
-    time. This helper is called again later (lazily, on first
-    request) so we pick up the resolved values instead of relying
-    on a value cached at import time.
+    Railway:
+        MYSQL_URL=${{MySQL.MYSQL_URL}}
 
-    MYSQL_URL (e.g. ${{MySQL.MYSQL_URL}}) is a complete, pre-built
-    connection string supplied by the MySQL service template and is
-    checked first. Building the connection piece-by-piece from
-    individual reference variables (MYSQL_HOST, MYSQL_USER,
-    MYSQL_PASSWORD, etc.) is fragile: if any one of those variables
-    fails to resolve at runtime (most commonly MYSQL_PASSWORD), the
-    app ends up connecting with a blank password. Preferring the
-    ready-made MYSQL_URL avoids that failure mode entirely.
+    Local .env:
+        MYSQL_URL=mysql://user:password@127.0.0.1:3306/database
+
+    MYSQL_URL is preferred because Railway automatically provides
+    the complete connection string.
     """
 
     mysql_url = (
@@ -122,96 +67,82 @@ def load_db_settings():
         or ""
     ).strip()
 
-    if mysql_url:
+    if not mysql_url:
 
-        parsed = urlparse(mysql_url)
+        raise RuntimeError(
+            "MYSQL_URL is not configured.\n"
+            "For Railway, create MYSQL_URL in the application "
+            "service and reference your MySQL service's MYSQL_URL."
+        )
 
-        return {
-            "url": mysql_url,
-            "name": (parsed.path or "").lstrip("/") or "stock_breakout3",
-            "user": parsed.username or "root",
-            "password": parsed.password or "",
-            "host": parsed.hostname or "mysql.railway.internal",
-            "port": parsed.port or 3306,
-        }
+    parsed = urlparse(mysql_url)
+
+    host = parsed.hostname
+    port = parsed.port or 3306
+    user = parsed.username
+    password = parsed.password
+    database = (parsed.path or "").lstrip("/")
+
+    if not host:
+
+        raise RuntimeError(
+            "MYSQL_URL does not contain a valid database host."
+        )
+
+    if not user:
+
+        raise RuntimeError(
+            "MYSQL_URL does not contain a database username."
+        )
+
+    if not database:
+
+        raise RuntimeError(
+            "MYSQL_URL does not contain a database name."
+        )
 
     return {
-        "url": None,
-        "name": (
-            os.getenv("MYSQL_DATABASE")
-            or os.getenv("MYSQLDATABASE")
-            or "stock_breakout3"
-        ),
-        "user": (
-            os.getenv("MYSQL_USER")
-            or os.getenv("MYSQLUSER")
-            or "root"
-        ),
-        "password": (
-            os.getenv("MYSQL_PASSWORD")
-            or os.getenv("MYSQLPASSWORD")
-            or ""
-        ),
-        "host": (
-            os.getenv("MYSQL_HOST")
-            or os.getenv("MYSQLHOST")
-            or os.getenv("RAILWAY_PRIVATE_DOMAIN_MYSQL")
-            # Railway reference variables (e.g. ${{MySQL.MYSQLHOST}})
-            # can fail to resolve at runtime, leaving MYSQL_HOST
-            # empty. In that case, prefer the MySQL service's
-            # Railway private networking domain over localhost so we
-            # don't try to connect to the app's own container.
-            or "mysql.railway.internal"
-        ),
-        "port": int(
-            os.getenv("MYSQL_PORT")
-            or os.getenv("MYSQLPORT")
-            or "3306"
-        ),
+        "url": mysql_url,
+        "host": host,
+        "port": port,
+        "user": user,
+        "password": password or "",
+        "name": database
     }
 
 
 def build_db_uri(settings):
     """
-    Build the SQLAlchemy connection URI.
-
-    Prefers the pre-built MYSQL_URL (see load_db_settings) when
-    available, converting its scheme to the pymysql driver expected
-    by SQLAlchemy. Falls back to assembling the URI from individual
-    components otherwise.
+    Convert Railway MYSQL_URL into SQLAlchemy URL.
     """
 
-    mysql_url = settings.get("url")
+    mysql_url = settings["url"]
 
-    if mysql_url:
-
-        if mysql_url.startswith("mysql+pymysql://"):
-
-            return mysql_url
-
-        if mysql_url.startswith("mysql://"):
-
-            return mysql_url.replace("mysql://", "mysql+pymysql://", 1)
+    if mysql_url.startswith(
+        "mysql+pymysql://"
+    ):
 
         return mysql_url
 
-    password = settings.get("password")
+    if mysql_url.startswith(
+        "mysql://"
+    ):
 
-    if password:
+        return mysql_url.replace(
+            "mysql://",
+            "mysql+pymysql://",
+            1
+        )
 
-        credentials = f"{settings['user']}:{password}"
-
-    else:
-
-        credentials = settings["user"]
-
-    return (
-        "mysql+pymysql://"
-        f"{credentials}"
-        f"@{settings['host']}:{settings['port']}"
-        f"/{settings['name']}"
+    raise RuntimeError(
+        "Unsupported MYSQL_URL format. "
+        "Expected mysql:// or mysql+pymysql://"
     )
 
+
+# ============================================================
+# LOAD DATABASE SETTINGS
+# ============================================================
 
 _initial_db_settings = load_db_settings()
 
@@ -221,112 +152,53 @@ DB_PASSWORD = _initial_db_settings["password"]
 DB_HOST = _initial_db_settings["host"]
 DB_PORT = _initial_db_settings["port"]
 
+
 # ============================================================
-# DIAGNOSTIC
+# DATABASE DIAGNOSTIC
 # ============================================================
 
 print("")
 print("=" * 60)
 print("STOCK BREAKOUT 3")
 print("=" * 60)
+
 print(
     "ENV FILE       :",
     ENV_FILE
 )
+
 print(
     "ENV EXISTS     :",
     os.path.exists(ENV_FILE)
 )
+
 print(
     "MYSQL HOST     :",
     DB_HOST
 )
+
 print(
     "MYSQL USER     :",
     DB_USER
 )
+
 print(
     "MYSQL DATABASE :",
     DB_NAME
 )
+
+print(
+    "MYSQL PORT     :",
+    DB_PORT
+)
+
 print(
     "PASSWORD LOADED:",
     bool(DB_PASSWORD)
 )
+
 print("=" * 60)
 print("")
-
-
-# ============================================================
-# CREATE MYSQL DATABASE
-# ============================================================
-
-def ensure_database():
-    """
-    Best-effort creation of the target MySQL database.
-
-    Reads connection settings fresh from the environment (rather
-    than relying on module-level globals) so that Railway reference
-    variables which resolve after import are picked up. Any
-    connection failure is caught and logged instead of raised, so
-    the app can still start even if MySQL is not reachable yet
-    (e.g. the MySQL service is still booting).
-    """
-
-    settings = load_db_settings()
-
-    connection = None
-
-    try:
-
-        connection = pymysql.connect(
-            host=settings["host"],
-            port=settings["port"],
-            user=settings["user"],
-            password=settings["password"],
-            charset="utf8mb4",
-            autocommit=True
-        )
-
-        with connection.cursor() as cursor:
-
-            cursor.execute(
-                f"""
-                CREATE DATABASE IF NOT EXISTS
-                `{settings['name']}`
-                CHARACTER SET utf8mb4
-                COLLATE utf8mb4_unicode_ci
-                """
-            )
-
-        print(
-            f"MySQL database ready: {settings['name']}"
-        )
-
-        return True
-
-    except Exception as error:
-
-        print("")
-        print("=" * 60)
-        print("MYSQL CONNECTION ERROR")
-        print("=" * 60)
-        print(error)
-        print("")
-        print(
-            "Database will be initialized lazily on first "
-            "request once MySQL is reachable."
-        )
-        print("=" * 60)
-        print("")
-
-        return False
-
-    finally:
-
-        if connection:
-
-            connection.close()
 
 
 # ============================================================
@@ -342,11 +214,24 @@ app = Flask(__name__)
 
 app.config[
     "SQLALCHEMY_DATABASE_URI"
-] = build_db_uri(_initial_db_settings)
+] = build_db_uri(
+    _initial_db_settings
+)
 
 app.config[
     "SQLALCHEMY_TRACK_MODIFICATIONS"
 ] = False
+
+# Connection pool settings
+app.config[
+    "SQLALCHEMY_ENGINE_OPTIONS"
+] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 280,
+    "pool_timeout": 30,
+    "pool_size": 5,
+    "max_overflow": 10
+}
 
 
 db = SQLAlchemy(app)
@@ -365,7 +250,6 @@ class StockMaster(db.Model):
         primary_key=True
     )
 
-    # Date stock was entered
     date = db.Column(
         db.Date,
         nullable=False,
@@ -399,7 +283,6 @@ class StockMaster(db.Model):
         nullable=False
     )
 
-    # Google Finance current price
     current_price = db.Column(
         db.Numeric(14, 2),
         nullable=True
@@ -447,61 +330,74 @@ class StockMaster(db.Model):
 
 
 # ============================================================
-# LAZY DATABASE INITIALIZATION
+# DATABASE INITIALIZATION
 # ============================================================
-#
-# The database (and its tables) are created on the first
-# incoming request instead of at import time. This gives
-# Railway's reference variables (e.g. ${{MySQL.MYSQLHOST}})
-# time to resolve, and lets the app boot even if the MySQL
-# service is not reachable yet.
 
 _db_initialized = False
 
 
 def initialize_database():
 
-    global _db_initialized, DB_HOST, DB_USER, DB_PASSWORD, DB_NAME, DB_PORT
+    global _db_initialized
 
     if _db_initialized:
 
-        return
-
-    settings = load_db_settings()
-
-    DB_HOST = settings["host"]
-    DB_USER = settings["user"]
-    DB_PASSWORD = settings["password"]
-    DB_NAME = settings["name"]
-    DB_PORT = settings["port"]
-
-    app.config["SQLALCHEMY_DATABASE_URI"] = build_db_uri(settings)
-
-    db_ready = ensure_database()
-
-    if not db_ready:
-
-        return
+        return True
 
     try:
 
-        db.create_all()
+        with app.app_context():
+
+            db.create_all()
+
+        print("")
+        print("=" * 60)
+        print("MYSQL DATABASE READY")
+        print("=" * 60)
 
         print(
-            "MySQL table ready: stock_master"
+            "MYSQL HOST     :",
+            DB_HOST
         )
 
+        print(
+            "MYSQL USER     :",
+            DB_USER
+        )
+
+        print(
+            "MYSQL DATABASE :",
+            DB_NAME
+        )
+
+        print(
+            "MYSQL PORT     :",
+            DB_PORT
+        )
+
+        print(
+            "TABLE          :",
+            "stock_master"
+        )
+
+        print("=" * 60)
+        print("")
+
         _db_initialized = True
+
+        return True
 
     except Exception as error:
 
         print("")
         print("=" * 60)
-        print("MYSQL TABLE CREATION ERROR")
+        print("MYSQL TABLE INITIALIZATION ERROR")
         print("=" * 60)
         print(error)
         print("=" * 60)
         print("")
+
+        return False
 
 
 @app.before_request
@@ -692,8 +588,6 @@ def stock_to_dict(
         )
     )
 
-    # If scanner did not return a live
-    # price, use stored DB price.
     if current_price is None:
 
         if stock.current_price is not None:
@@ -708,8 +602,6 @@ def stock_to_dict(
         )
     )
 
-    # Calculate from stored current price
-    # if scanner result is unavailable.
     if (
         percent_diff is None
         and current_price is not None
@@ -747,7 +639,7 @@ def stock_to_dict(
 
         elif (
             float(current_price)
-            > float(stock.breakout_level)
+            >= float(stock.breakout_level)
         ):
 
             status = "YES"
@@ -1170,116 +1062,227 @@ def get_stats():
 
 
 # ============================================================
-# LIVE RUN SCAN (SERVER-SENT EVENTS)
+# LIVE RUN SCAN - SERVER SENT EVENTS
 # ============================================================
 
 @app.get("/api/run-scan-stream")
 def run_breakout_scan_stream():
 
     category = clean_string(
-        request.args.get("category", "")
+        request.args.get(
+            "category",
+            ""
+        )
     )
 
     query = StockMaster.query
 
     if category:
+
         query = query.filter(
-            StockMaster.category == category
+            StockMaster.category
+            == category
         )
 
     selected_stocks = (
         query
-        .order_by(StockMaster.symbol.asc())
+        .order_by(
+            StockMaster.symbol.asc()
+        )
         .all()
     )
 
     if not selected_stocks:
+
         return jsonify({
-            "success": False,
-            "message": "No stocks found for the selected category."
+
+            "success":
+                False,
+
+            "message":
+                "No stocks found for the selected category."
+
         }), 400
 
     @stream_with_context
     def generate():
 
-        total = len(selected_stocks)
+        total = len(
+            selected_stocks
+        )
+
         results = {}
+
         scanned = 0
         breakouts = 0
         not_found = 0
         errors = 0
 
-        # A new scan always starts with an empty latest-run result.
-        app.config["LIVE_RESULTS"] = {}
+        app.config[
+            "LIVE_RESULTS"
+        ] = {}
 
-        yield "data: " + json.dumps({
-            "type": "start",
-            "total": total,
-            "category": category or "ALL"
-        }) + "\n\n"
+        yield (
+            "data: "
+            + json.dumps({
 
-        for index, stock in enumerate(selected_stocks, start=1):
+                "type":
+                    "start",
 
-            result = scan_stock(stock)
+                "total":
+                    total,
+
+                "category":
+                    category or "ALL"
+
+            })
+            + "\n\n"
+        )
+
+        for index, stock in enumerate(
+            selected_stocks,
+            start=1
+        ):
 
             try:
-                # Save the current price immediately after this stock is fetched.
+
+                result = scan_stock(
+                    stock
+                )
+
                 db.session.commit()
+
             except Exception as error:
+
                 db.session.rollback()
-                result["status"] = "ERROR"
-                result["error"] = str(error)
 
-            # Keep only the latest scan in memory; no scan table is used.
-            results[stock.id] = result
-            app.config["LIVE_RESULTS"] = results.copy()
+                result = {
 
-            if result.get("current_price") is not None:
+                    "status":
+                        "ERROR",
+
+                    "error":
+                        str(error)
+
+                }
+
+            results[
+                stock.id
+            ] = result
+
+            app.config[
+                "LIVE_RESULTS"
+            ] = results.copy()
+
+            if result.get(
+                "current_price"
+            ) is not None:
+
                 scanned += 1
 
-            if result.get("status") == "YES":
+            if result.get(
+                "status"
+            ) == "YES":
+
                 breakouts += 1
-            elif result.get("status") == "NOT FOUND":
+
+            elif result.get(
+                "status"
+            ) == "NOT FOUND":
+
                 not_found += 1
-            elif result.get("status") == "ERROR":
+
+            elif result.get(
+                "status"
+            ) == "ERROR":
+
                 errors += 1
 
-            # Send this stock immediately. Frontend decides whether to display it.
-            yield "data: " + json.dumps({
-                "type": "stock",
-                "index": index,
-                "total": total,
-                "result": result,
-                "summary": {
-                    "scanned": scanned,
-                    "breakouts": breakouts,
-                    "not_found": not_found,
-                    "errors": errors
-                }
-            }) + "\n\n"
+            yield (
+                "data: "
+                + json.dumps({
 
-            # Keep the same delay used by the working scanner.
+                    "type":
+                        "stock",
+
+                    "index":
+                        index,
+
+                    "total":
+                        total,
+
+                    "result":
+                        result,
+
+                    "summary": {
+
+                        "scanned":
+                            scanned,
+
+                        "breakouts":
+                            breakouts,
+
+                        "not_found":
+                            not_found,
+
+                        "errors":
+                            errors
+                    }
+
+                })
+                + "\n\n"
+            )
+
             time.sleep(2)
 
-        yield "data: " + json.dumps({
-            "type": "complete",
-            "total": total,
-            "summary": {
-                "scanned": scanned,
-                "breakouts": breakouts,
-                "not_found": not_found,
-                "errors": errors
-            }
-        }) + "\n\n"
+        yield (
+            "data: "
+            + json.dumps({
+
+                "type":
+                    "complete",
+
+                "total":
+                    total,
+
+                "summary": {
+
+                    "scanned":
+                        scanned,
+
+                    "breakouts":
+                        breakouts,
+
+                    "not_found":
+                        not_found,
+
+                    "errors":
+                        errors
+                }
+
+            })
+            + "\n\n"
+        )
 
     return Response(
+
         generate(),
+
         mimetype="text/event-stream",
+
         headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-            "Connection": "keep-alive"
+
+            "Cache-Control":
+                "no-cache",
+
+            "X-Accel-Buffering":
+                "no",
+
+            "Connection":
+                "keep-alive"
+
         }
+
     )
 
 
@@ -1301,10 +1304,6 @@ def run_breakout_scan():
 
     query = StockMaster.query
 
-    # --------------------------------------------------------
-    # CATEGORY FILTER
-    # --------------------------------------------------------
-
     if category:
 
         query = query.filter(
@@ -1313,13 +1312,6 @@ def run_breakout_scan():
             == category
 
         )
-
-    # --------------------------------------------------------
-    # GET ALL STOCKS
-    #
-    # No pagination here.
-    # IMPORTANT: scan ALL selected stocks.
-    # --------------------------------------------------------
 
     selected_stocks = (
 
@@ -1339,10 +1331,7 @@ def run_breakout_scan():
                 False,
 
             "message":
-                (
-                    "No stocks found "
-                    "for the selected category."
-                ),
+                "No stocks found for the selected category.",
 
             "stocks_scanned":
                 0,
@@ -1370,26 +1359,28 @@ def run_breakout_scan():
 
     print(
         "Stocks selected:",
-        len(
-            selected_stocks
-        )
+        len(selected_stocks)
     )
 
     print("=" * 60)
 
-    # --------------------------------------------------------
-    # RUN SCANNER
-    # --------------------------------------------------------
+    try:
 
-    result = run_scan(
-        selected_stocks
-    )
+        result = run_scan(
+            selected_stocks
+        )
 
-    # --------------------------------------------------------
-    # Store latest scan results only in memory.
-    #
-    # No scan table is created.
-    # --------------------------------------------------------
+    except Exception as error:
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "message":
+                str(error)
+
+        }), 500
 
     app.config[
         "LIVE_RESULTS"
@@ -1397,10 +1388,6 @@ def run_breakout_scan():
         "results",
         {}
     )
-
-    # --------------------------------------------------------
-    # Return summary
-    # --------------------------------------------------------
 
     return jsonify({
 
@@ -1484,10 +1471,6 @@ def create_stock():
 
         ).upper()
 
-        # ----------------------------------------------------
-        # DUPLICATE CHECK
-        # ----------------------------------------------------
-
         existing = (
 
             StockMaster.query
@@ -1518,10 +1501,6 @@ def create_stock():
                     )
 
             }), 400
-
-        # ----------------------------------------------------
-        # CREATE
-        # ----------------------------------------------------
 
         stock = StockMaster(
 
@@ -1696,10 +1675,6 @@ def update_stock(stock_id):
 
         ).upper()
 
-        # ----------------------------------------------------
-        # DUPLICATE CHECK
-        # ----------------------------------------------------
-
         duplicate = (
 
             StockMaster.query
@@ -1735,10 +1710,6 @@ def update_stock(stock_id):
                     )
 
             }), 400
-
-        # ----------------------------------------------------
-        # UPDATE
-        # ----------------------------------------------------
 
         stock.date = parse_date(
 
@@ -1788,8 +1759,6 @@ def update_stock(stock_id):
 
         )
 
-        # Current price is editable,
-        # but can be blank.
         stock.current_price = (
 
             parse_optional_float(
@@ -1893,29 +1862,48 @@ def delete_stock(stock_id):
 
         }), 404
 
-    db.session.delete(
-        stock
-    )
+    try:
 
-    db.session.commit()
+        db.session.delete(
+            stock
+        )
 
-    # Remove from current scan result
-    live_results = app.config.get(
-        "LIVE_RESULTS",
-        {}
-    )
+        db.session.commit()
 
-    live_results.pop(
-        stock_id,
-        None
-    )
+        live_results = app.config.get(
+            "LIVE_RESULTS",
+            {}
+        )
 
-    return jsonify({
+        live_results.pop(
+            stock_id,
+            None
+        )
 
-        "success":
-            True
+        app.config[
+            "LIVE_RESULTS"
+        ] = live_results
 
-    })
+        return jsonify({
+
+            "success":
+                True
+
+        })
+
+    except Exception as error:
+
+        db.session.rollback()
+
+        return jsonify({
+
+            "success":
+                False,
+
+            "message":
+                str(error)
+
+        }), 500
 
 
 # ============================================================
@@ -2162,10 +2150,6 @@ def upload_file():
 
             try:
 
-                # ------------------------------------------------
-                # SYMBOL
-                # ------------------------------------------------
-
                 symbol = clean_string(
 
                     get_value(
@@ -2175,14 +2159,9 @@ def upload_file():
 
                 ).upper()
 
-                # Completely blank row
                 if not symbol:
 
                     continue
-
-                # ------------------------------------------------
-                # EXCHANGE
-                # ------------------------------------------------
 
                 exchange = clean_string(
 
@@ -2195,10 +2174,6 @@ def upload_file():
 
                 ).upper()
 
-                # ------------------------------------------------
-                # DATE
-                # ------------------------------------------------
-
                 stock_date = parse_date(
 
                     get_value(
@@ -2207,12 +2182,6 @@ def upload_file():
                     )
 
                 )
-
-                # ------------------------------------------------
-                # STOCK NAME
-                #
-                # Supports your "Stocks" column.
-                # ------------------------------------------------
 
                 stock_name = clean_string(
 
@@ -2238,10 +2207,6 @@ def upload_file():
                         "Stocks/Stock Name is blank"
                     )
 
-                # ------------------------------------------------
-                # BREAKOUT LEVEL
-                # ------------------------------------------------
-
                 breakout_level = (
 
                     parse_required_float(
@@ -2266,10 +2231,6 @@ def upload_file():
 
                 )
 
-                # ------------------------------------------------
-                # STOP LOSS
-                # ------------------------------------------------
-
                 stoploss = (
 
                     parse_required_float(
@@ -2293,14 +2254,6 @@ def upload_file():
                     )
 
                 )
-
-                # ------------------------------------------------
-                # CURRENT PRICE
-                #
-                # OPTIONAL
-                #
-                # Your Stocks.xlsx does not have this.
-                # ------------------------------------------------
 
                 current_price_value = (
 
@@ -2328,10 +2281,6 @@ def upload_file():
 
                 )
 
-                # ------------------------------------------------
-                # YOUTUBER
-                # ------------------------------------------------
-
                 youtuber = clean_string(
 
                     get_value(
@@ -2350,10 +2299,6 @@ def upload_file():
 
                 )
 
-                # ------------------------------------------------
-                # ADVISOR
-                # ------------------------------------------------
-
                 advisor = clean_string(
 
                     get_value(
@@ -2365,10 +2310,6 @@ def upload_file():
                     )
 
                 )
-
-                # ------------------------------------------------
-                # CATEGORY
-                # ------------------------------------------------
 
                 category = clean_string(
 
@@ -2385,10 +2326,6 @@ def upload_file():
                 if not category:
 
                     category = "Breakouts"
-
-                # ------------------------------------------------
-                # FIND EXISTING STOCK
-                # ------------------------------------------------
 
                 stock = (
 
@@ -2474,11 +2411,8 @@ def upload_file():
                         stoploss
                     )
 
-                    # IMPORTANT:
-                    #
-                    # If Current Price is not present
-                    # in Excel, preserve existing DB price.
-                    #
+                    # Preserve existing current price
+                    # when Excel doesn't contain one.
 
                     if current_price is not None:
 
@@ -2530,14 +2464,8 @@ def upload_file():
 
                 })
 
-        # ====================================================
-        # SAVE
-        # ====================================================
-
         db.session.commit()
 
-        # Clear old scan results because
-        # master data changed.
         app.config[
             "LIVE_RESULTS"
         ] = {}
@@ -2603,40 +2531,41 @@ def download_excel():
     workbook = Workbook()
 
     worksheet = workbook.active
+
     worksheet.title = "Breakout Stocks"
 
-    # --------------------------------------------------
-    # EXCEL HEADER
-    # --------------------------------------------------
-
     worksheet.append([
-        "Date",
-        "Symbol",
-        "Stocks",
-        "Exchange",
-        "BreakOut Level",
-        "StopLoss",
-        "Current Price",
-        "You Tuber",
-        "Advisor",
-        "Category"
-    ])
 
-    # --------------------------------------------------
-    # ONLY EXPORT BREAKOUT = YES
-    #
-    # YES means:
-    # Current Price >= BreakOut Level
-    # --------------------------------------------------
+        "Date",
+
+        "Symbol",
+
+        "Stocks",
+
+        "Exchange",
+
+        "BreakOut Level",
+
+        "StopLoss",
+
+        "Current Price",
+
+        "You Tuber",
+
+        "Advisor",
+
+        "Category"
+
+    ])
 
     for stock in rows:
 
-        # No current price -> cannot determine breakout
         if stock.current_price is None:
+
             continue
 
-        # No breakout level -> cannot determine breakout
         if stock.breakout_level is None:
+
             continue
 
         try:
@@ -2656,20 +2585,13 @@ def download_excel():
 
             continue
 
-        # Avoid invalid breakout level
         if breakout_level <= 0:
-            continue
 
-        # --------------------------------------------------
-        # BREAKOUT = YES
-        # --------------------------------------------------
+            continue
 
         if current_price < breakout_level:
-            continue
 
-        # --------------------------------------------------
-        # ADD ONLY BREAKOUT STOCK
-        # --------------------------------------------------
+            continue
 
         worksheet.append([
 
@@ -2699,13 +2621,11 @@ def download_excel():
 
         ])
 
-    # --------------------------------------------------
-    # SAVE EXCEL
-    # --------------------------------------------------
-
     output = io.BytesIO()
 
-    workbook.save(output)
+    workbook.save(
+        output
+    )
 
     output.seek(0)
 
@@ -2721,7 +2641,9 @@ def download_excel():
             "application/vnd.openxmlformats-"
             "officedocument.spreadsheetml.sheet"
         )
+
     )
+
 
 # ============================================================
 # HEALTH CHECK
@@ -2751,7 +2673,13 @@ def health():
                 "connected",
 
             "stock_count":
-                stock_count
+                stock_count,
+
+            "host":
+                DB_HOST,
+
+            "database_name":
+                DB_NAME
 
         })
 
@@ -2766,7 +2694,10 @@ def health():
                 "error",
 
             "message":
-                str(error)
+                str(error),
+
+            "host":
+                DB_HOST
 
         }), 500
 
@@ -2790,6 +2721,7 @@ if __name__ == "__main__":
 
         ),
 
-        debug=True
+        debug=False
 
     )
+```
