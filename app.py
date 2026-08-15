@@ -195,9 +195,19 @@ def build_db_uri(settings):
 
         return mysql_url
 
+    password = settings.get("password")
+
+    if password:
+
+        credentials = f"{settings['user']}:{password}"
+
+    else:
+
+        credentials = settings["user"]
+
     return (
         "mysql+pymysql://"
-        f"{settings['user']}:{settings['password']}"
+        f"{credentials}"
         f"@{settings['host']}:{settings['port']}"
         f"/{settings['name']}"
     )
