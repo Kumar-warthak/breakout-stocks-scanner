@@ -1174,11 +1174,11 @@ def run_breakout_scan_stream():
                 "LIVE_RESULTS"
             ] = results.copy()
 
-            if result.get(
-                "current_price"
-            ) is not None:
+            #if result.get(
+             #   "current_price"
+            #) is not None:
 
-                scanned += 1
+            scanned += 1
 
             if result.get(
                 "status"
