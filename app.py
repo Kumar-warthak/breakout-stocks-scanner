@@ -1144,10 +1144,19 @@ def run_breakout_scan_stream():
         ):
 
             try:
+                print(
+                f"========== SCANNING {index}/{total}: "
+                 f"{stock.symbol} ==========",
+                flush=True
+        )
+
+                start_time = time.time()
 
                 result = scan_stock(
                     stock
                 )
+                elapsed = time.time() - start_time   
+                print( f"========== COMPLETED {index}/{total}: "f"{stock.symbol} ({elapsed:.2f}s) ==========",flush=True)         
 
                 db.session.commit()
 
