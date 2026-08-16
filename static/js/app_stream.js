@@ -772,7 +772,7 @@ function sortScanResults(
 
 
     renderTable();
-
+    updateMobileSortIcons();
     updateSortIcons();
 }
 
@@ -1717,7 +1717,6 @@ function updateSortIcons() {
 // ============================================================
 // CONNECT DATE HEADER
 // ============================================================
-
 function setupSorting() {
 
     const dateHeader =
@@ -1731,6 +1730,10 @@ function setupSorting() {
         );
 
 
+    // ========================================================
+    // DESKTOP DATE SORT
+    // ========================================================
+
     if (dateHeader) {
 
         dateHeader.onclick =
@@ -1739,9 +1742,15 @@ function setupSorting() {
                 sortScanResults(
                     "date"
                 );
+
             };
+
     }
 
+
+    // ========================================================
+    // DESKTOP % DIFF SORT
+    // ========================================================
 
     if (percentHeader) {
 
@@ -1751,10 +1760,58 @@ function setupSorting() {
                 sortScanResults(
                     "percent_diff"
                 );
-            };
-    }
-}
 
+            };
+
+    }
+
+
+    // ========================================================
+    // MOBILE DATE SORT
+    // ========================================================
+
+    const mobileDateSort =
+        document.getElementById(
+            "mobileDateSort"
+        );
+
+    if (mobileDateSort) {
+
+        mobileDateSort.onclick =
+            function () {
+
+                sortScanResults(
+                    "date"
+                );
+
+            };
+
+    }
+
+
+    // ========================================================
+    // MOBILE % DIFF SORT
+    // ========================================================
+
+    const mobilePercentSort =
+        document.getElementById(
+            "mobilePercentSort"
+        );
+
+    if (mobilePercentSort) {
+
+        mobilePercentSort.onclick =
+            function () {
+
+                sortScanResults(
+                    "percent_diff"
+                );
+
+            };
+
+    }
+
+}
 
 // ============================================================
 // INITIALIZE SORTING
