@@ -423,215 +423,324 @@ function parseDateValue(value) {
 
 function renderTable() {
 
-    const body =
-        tableBody();
+    const body = tableBody();
 
     if (!body) return;
 
-    body.innerHTML =
-        "";
+    // Clear desktop table
+    body.innerHTML = "";
 
+    // Clear mobile cards
+    const mobileList =
+        document.getElementById("mobileStockList");
 
-    const sorted =
-        [
-            ...state.scanResults
-        ];
+    if (mobileList) {
+        mobileList.innerHTML = "";
+    }
 
+    // --------------------------------------------------------
+    // COPY RESULTS
+    // --------------------------------------------------------
+
+    const sorted = [
+        ...state.scanResults
+    ];
 
     // --------------------------------------------------------
     // SORT
     // --------------------------------------------------------
 
-    if (
-        state.sortColumn
-    ) {
+    if (state.sortColumn) {
 
-        sorted.sort(
-            (
-                a,
-                b
-            ) => {
+        sorted.sort((a, b) => {
 
-                let av =
-                    a[
-                        state.sortColumn
-                    ];
+            let av =
+                a[state.sortColumn];
 
-                let bv =
-                    b[
-                        state.sortColumn
-                    ];
+            let bv =
+                b[state.sortColumn];
 
+            // % Difference
+            if (
+                state.sortColumn ===
+                "percent_diff"
+            ) {
 
-                // % Difference
-                if (
-                    state.sortColumn ===
-                    "percent_diff"
-                ) {
+                av = Number(
+                    av ?? -Infinity
+                );
 
-                    av =
-                        Number(
-                            av ?? -Infinity
-                        );
-
-                    bv =
-                        Number(
-                            bv ?? -Infinity
-                        );
-                }
-
-
-                // Date
-                else if (
-                    state.sortColumn ===
-                    "date"
-                ) {
-
-                    av =
-                        parseDateValue(
-                            av
-                        );
-
-                    bv =
-                        parseDateValue(
-                            bv
-                        );
-                }
-
-
-                if (
-                    av < bv
-                ) {
-
-                    return (
-                        state.sortDirection ===
-                        "asc"
-                    )
-                        ? -1
-                        : 1;
-                }
-
-
-                if (
-                    av > bv
-                ) {
-
-                    return (
-                        state.sortDirection ===
-                        "asc"
-                    )
-                        ? 1
-                        : -1;
-                }
-
-
-                return 0;
+                bv = Number(
+                    bv ?? -Infinity
+                );
             }
-        );
+
+            // Date
+            else if (
+                state.sortColumn ===
+                "date"
+            ) {
+
+                av =
+                    parseDateValue(av);
+
+                bv =
+                    parseDateValue(bv);
+            }
+
+            if (av < bv) {
+
+                return (
+                    state.sortDirection ===
+                    "asc"
+                )
+                    ? -1
+                    : 1;
+            }
+
+            if (av > bv) {
+
+                return (
+                    state.sortDirection ===
+                    "asc"
+                )
+                    ? 1
+                    : -1;
+            }
+
+            return 0;
+        });
     }
 
 
-    // --------------------------------------------------------
-    // CREATE ROWS
-    // --------------------------------------------------------
+    // ========================================================
+    // DESKTOP TABLE
+    // ========================================================
 
-    sorted.forEach(
-        stock => {
+    sorted.forEach(stock => {
 
-            const diff =
-                Number(
-                    stock.percent_diff || 0
-                );
-
-
-            const row =
-                document.createElement(
-                    "tr"
-                );
-
-
-            row.innerHTML = `
-
-                <td>
-                    ${esc(
-                        stock.date
-                    )}
-                </td>
-
-                <td class="symbol">
-                    ${esc(
-                        stock.symbol
-                    )}
-                </td>
-
-                <td>
-                    ${esc(
-                        stock.stock_name
-                    )}
-                </td>
-
-                <td>
-                    ${esc(
-                        stock.exchange
-                    )}
-                </td>
-
-                <td>
-                    ₹${money(
-                        stock.breakout_level
-                    )}
-                </td>
-
-                <td>
-                    ₹${money(
-                        stock.stoploss
-                    )}
-                </td>
-
-                <td>
-                    ₹${money(
-                        stock.current_price
-                    )}
-                </td>
-
-                <td class="green">
-                    ▲ ${diff.toFixed(2)}%
-                </td>
-
-                <td>
-                    ${esc(
-                        stock.youtuber
-                    )}
-                </td>
-
-                <td>
-                    ${esc(
-                        stock.advisor
-                    )}
-                </td>
-
-                <td>
-                    ${esc(
-                        stock.category
-                    )}
-                </td>
-
-                <td>
-                    <span class="pill">
-                        ⚡ YES
-                    </span>
-                </td>
-
-            `;
-
-
-            body.appendChild(
-                row
+        const diff =
+            Number(
+                stock.percent_diff || 0
             );
-        }
-    );
-}
 
+        const row =
+            document.createElement("tr");
+
+        row.innerHTML = `
+
+            <td>
+                ${esc(stock.date)}
+            </td>
+
+            <td class="symbol">
+                ${esc(stock.symbol)}
+            </td>
+
+            <td>
+                ${esc(stock.stock_name)}
+            </td>
+
+            <td>
+                ${esc(stock.exchange)}
+            </td>
+
+            <td>
+                ₹${money(stock.breakout_level)}
+            </td>
+
+            <td>
+                ₹${money(stock.stoploss)}
+            </td>
+
+            <td>
+                ₹${money(stock.current_price)}
+            </td>
+
+            <td class="green">
+                ▲ ${diff.toFixed(2)}%
+            </td>
+
+            <td>
+                ${esc(stock.youtuber)}
+            </td>
+
+            <td>
+                ${esc(stock.advisor)}
+            </td>
+
+            <td>
+                ${esc(stock.category)}
+            </td>
+
+            <td>
+                <span class="pill">
+                    ⚡ YES
+                </span>
+            </td>
+
+        `;
+
+        body.appendChild(row);
+    });
+
+
+    // ========================================================
+    // MOBILE STOCK CARDS
+    // ========================================================
+
+    if (!mobileList) {
+        return;
+    }
+
+    sorted.forEach(stock => {
+
+        const diff =
+            Number(
+                stock.percent_diff || 0
+            );
+
+        const card =
+            document.createElement("div");
+
+        card.className =
+            "mobile-stock-card";
+
+
+        card.innerHTML = `
+
+            <!-- TOP -->
+            <div class="mobile-card-top">
+
+                <div class="mobile-symbol">
+                    ${esc(stock.symbol)}
+                </div>
+
+                <span class="mobile-breakout-badge">
+                    ⚡ BREAKOUT
+                </span>
+
+            </div>
+
+
+            <!-- EXCHANGE -->
+            <div class="mobile-exchange">
+                ${esc(stock.exchange)}
+            </div>
+
+
+            <!-- STOCK NAME -->
+            <div class="mobile-stock-name">
+                ${esc(stock.stock_name)}
+            </div>
+
+
+            <div class="mobile-divider"></div>
+
+
+            <!-- DATE / DIFF -->
+            <div class="mobile-info-row">
+
+                <div class="mobile-info">
+
+                    <span class="mobile-label">
+                        DATE
+                    </span>
+
+                    <span class="mobile-value">
+                        ${esc(stock.date)}
+                    </span>
+
+                </div>
+
+
+                <div class="mobile-info mobile-right">
+
+                    <span class="mobile-label">
+                        % DIFF
+                    </span>
+
+                    <span class="mobile-value mobile-green">
+
+                        ▲ ${diff.toFixed(2)}%
+
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <!-- PRICES -->
+            <div class="mobile-price-row">
+
+                <div class="mobile-price">
+
+                    <span class="mobile-label">
+                        BREAKOUT
+                    </span>
+
+                    <span class="mobile-price-value">
+                        ₹${money(
+                            stock.breakout_level
+                        )}
+                    </span>
+
+                </div>
+
+
+                <div class="mobile-price">
+
+                    <span class="mobile-label">
+                        STOPLOSS
+                    </span>
+
+                    <span class="mobile-price-value">
+
+                        ${
+                            stock.stoploss == null
+                                ? "—"
+                                : "₹" +
+                                  money(
+                                      stock.stoploss
+                                  )
+                        }
+
+                    </span>
+
+                </div>
+
+
+                <div class="mobile-price">
+
+                    <span class="mobile-label">
+                        CURRENT
+                    </span>
+
+                    <span class="mobile-price-value mobile-green">
+
+                        ${
+                            stock.current_price == null
+                                ? "—"
+                                : "₹" +
+                                  money(
+                                      stock.current_price
+                                  )
+                        }
+
+                    </span>
+
+                </div>
+
+            </div>
+
+        `;
+
+        mobileList.appendChild(card);
+
+    });
+
+}
 
 // ============================================================
 // SORT
@@ -2123,5 +2232,3 @@ if (fileInput) {
         }
     );
 }
-
-
