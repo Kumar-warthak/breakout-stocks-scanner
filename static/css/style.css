@@ -551,3 +551,175 @@ footer button {
         font-size: 17px;
     }
 }
+
+/* =========================================================
+   MOBILE STOCK CARDS
+   ========================================================= */
+
+.mobile-stock-list {
+    display: none;
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    /* Hide desktop table */
+    .desktop-stock-table {
+        display: none !important;
+    }
+
+    /* Mobile cards */
+    .mobile-stock-list {
+        display: block;
+        padding: 10px 4px 12px;
+    }
+
+    .mobile-stock-card {
+        background: #ffffff;
+        border: 1px solid #e1e5e9;
+        border-radius: 12px;
+        padding: 12px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+
+    .mobile-card-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .mobile-symbol {
+        font-size: 17px;
+        font-weight: 800;
+        color: #111827;
+    }
+
+    .mobile-breakout-badge {
+        background: #08b77c;
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 4px 8px;
+        font-size: 9px;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .mobile-exchange {
+        display: inline-block;
+        background: #eef5ff;
+        color: #2563eb;
+        border-radius: 4px;
+        padding: 3px 6px;
+        font-size: 9px;
+        font-weight: 800;
+        margin-bottom: 5px;
+    }
+
+    .mobile-stock-name {
+        font-size: 12px;
+        line-height: 1.35;
+        color: #46515c;
+        max-width: 180px;
+    }
+
+    .mobile-divider {
+        height: 1px;
+        background: #edf0f2;
+        margin: 10px 0;
+    }
+
+    .mobile-info-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+
+    .mobile-info {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .mobile-right {
+        text-align: right;
+        align-items: flex-end;
+    }
+
+    .mobile-label {
+        font-size: 8px;
+        font-weight: 800;
+        color: #7b858f;
+        letter-spacing: .4px;
+    }
+
+    .mobile-value {
+        font-size: 11px;
+        color: #374151;
+    }
+
+    .mobile-green {
+        color: #008c61;
+        font-weight: 800;
+    }
+
+    .mobile-price-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 8px;
+    }
+
+    .mobile-price {
+        min-width: 0;
+    }
+
+    .mobile-price-value {
+        display: block;
+        margin-top: 3px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #374151;
+        white-space: nowrap;
+    }
+
+    /* Footer remains below cards */
+    .table-card footer {
+        display: flex;
+    }
+}
+
+
+/* =========================================================
+   VERY SMALL PHONES
+   ========================================================= */
+
+@media (max-width: 380px) {
+
+    .mobile-stock-card {
+        padding: 10px;
+    }
+
+    .mobile-symbol {
+        font-size: 16px;
+    }
+
+    .mobile-breakout-badge {
+        font-size: 8px;
+        padding: 4px 7px;
+    }
+
+    .mobile-stock-name {
+        font-size: 11px;
+    }
+
+    .mobile-price-value {
+        font-size: 10px;
+    }
+}
