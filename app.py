@@ -1015,7 +1015,7 @@ def get_stats():
             len(rows),
 
         "stocks_scanned":
-            len(items),
+             len(live_results),
 
         "breakout_stocks":
             len(
