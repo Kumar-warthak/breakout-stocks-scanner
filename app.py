@@ -1232,7 +1232,7 @@ def run_breakout_scan_stream():
                 + "\n\n"
             )
 
-            time.sleep(2)
+       
 
         yield (
             "data: "
