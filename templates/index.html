@@ -1,180 +1,637 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover"
+    >
+
     <title>Breakout Stocks Scanner</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
 </head>
+
 <body>
-    <div class="app">
-        <header>
-            <div class="brand">
-                <div class="logo">↗</div>
-                <div>
-                    <h1>Breakout Stocks Scanner</h1>
-                    <p>Stock master & category-based live scanner</p>
-                </div>
-            </div>
+
+<div class="app">
+
+    <!-- =========================================================
+         HEADER
+         ========================================================= -->
+
+    <header>
+
+        <div class="brand">
+
+            <div class="logo">↗</div>
+
             <div>
-                <button id="add">＋ Add Stock</button>
-                <button id="upload">⇧ Upload</button>
-                <button id="scan">↻ Run Scan</button>
-                <button id="excel" class="secondary">⇩ Excel</button>
-                <input id="file" type="file" accept=".csv,.xlsx" hidden>
+                <h1>Breakout Stocks Scanner</h1>
+                <p>Stock master & category-based live scanner</p>
             </div>
-        </header>
 
-        <section class="controls">
-            <div>
-                <label>CATEGORY</label>
-                <select id="category">
-                    <option value="">All Categories</option>
-                </select>
-            </div>
-            <div>
-                <label>SEARCH</label>
-                <input id="search" placeholder="Search symbol, company, advisor...">
-            </div>
-            <div>
-                <label>PRICE SOURCE</label>
-                <div class="source">Google Finance</div>
-            </div>
-        </section>
-
-        <section class="cards">
-            <div>
-                <small>BREAKOUT STOCKS</small>
-                <b id="breakouts">0</b>
-            </div>
-            <div>
-                <small>STOCKS SCANNED</small>
-                <b id="scanned">0</b>
-            </div>
-            <div>
-                <small>AVG % GAIN</small>
-                <b id="avg">0.00%</b>
-            </div>
-            <div>
-                <small>TOP GAINER</small>
-                <b id="top">-</b>
-            </div>
-        </section>
-
-        <section class="table-card">
-            <div class="scroll">
-                <table>
-                 <thead>
-    <tr>
-
-        <th
-            id="dateHeader"
-            class="sortable"
-            onclick="sortScanResults('date')"
-        >
-            DATE
-            <span id="dateSort">↕</span>
-        </th>
-
-        <th>SYMBOL</th>
-
-        <th>STOCK</th>
-
-        <th>EXCHANGE</th>
-
-        <th>BREAKOUT LEVEL</th>
-
-        <th>STOP LOSS</th>
-
-        <th>CURRENT PRICE</th>
-
-        <th
-            id="percentHeader"
-            class="sortable-header"
-            title="Click to sort by % Difference"
-        >
-            % DIFF
-            <span id="percentSort">↕</span>
-        </th>
-
-        <th>YOUTUBER</th>
-
-        <th>ADVISOR</th>
-
-        <th>CATEGORY</th>
-
-        <th>STATUS</th>
-
-    </tr>
-</thead>
-
-<tbody id="stockTableBody">
-</tbody>
-                </table>
-            </div>
-            <footer>
-                <span id="count">0 stocks</span>
-                <span>
-                    <button id="prev">‹</button>
-                    <span id="page">1 / 1</span>
-                    <button id="next">›</button>
-                </span>
-            </footer>
-        </section>
-
-        <div id="modal" class="modal">
-            <div class="dialog">
-                <div class="dialog-head">
-                    <h2 id="formTitle">Add Stock</h2>
-                    <button id="close" class="x">×</button>
-                </div>
-                <form id="form">
-                    <input type="hidden" id="id">
-                    <div class="formgrid">
-                        <label>Date
-                            <input id="date" type="date" required>
-                        </label>
-                        <label>Symbol
-                            <input id="symbol" required>
-                        </label>
-                        <label>Stock Name
-                            <input id="stock_name" required>
-                        </label>
-                        <label>Exchange
-                            <input id="exchange" value="NSE" required>
-                        </label>
-                        <label>Breakout Level
-                            <input id="breakout_level" type="number" step="0.01" required>
-                        </label>
-                        <label>StopLoss
-                            <input id="stoploss" type="number" step="0.01" required>
-                        </label>
-                        <label>Current Price
-                            <input id="current_price" type="number" step="0.01">
-                        </label>
-                        <label>YouTuber
-                            <input id="youtuber">
-                        </label>
-                        <label>Advisor
-                            <input id="advisor">
-                        </label>
-                        <label>Category
-                            <input id="categoryForm" list="catlist" required>
-                        </label>
-                    </div>
-                    <datalist id="catlist"></datalist>
-                    <div class="form-actions">
-                        <button type="button" id="cancel" class="secondary">Cancel</button>
-                        <button type="submit">Save</button>
-                    </div>
-                </form>
-            </div>
         </div>
 
-        <div id="toast"></div>
+
+        <div class="header-actions">
+
+            <button id="add">
+                ＋ Add Stock
+            </button>
+
+            <button id="upload">
+                ⇧ Upload
+            </button>
+
+            <button id="scan">
+                ↻ Run Scan
+            </button>
+
+            <button
+                id="excel"
+                class="secondary"
+            >
+                ⇩ Excel
+            </button>
+
+            <input
+                id="file"
+                type="file"
+                accept=".csv,.xlsx"
+                hidden
+            >
+
+        </div>
+
+    </header>
+
+
+    <!-- =========================================================
+         CONTROLS
+         ========================================================= -->
+
+    <section class="controls">
+
+        <div>
+
+            <label for="category">
+                CATEGORY
+            </label>
+
+            <select id="category">
+
+                <option value="">
+                    All Categories
+                </option>
+
+            </select>
+
+        </div>
+
+
+        <div>
+
+            <label for="search">
+                SEARCH
+            </label>
+
+            <input
+                id="search"
+                placeholder="Search symbol, company, advisor..."
+                autocomplete="off"
+            >
+
+        </div>
+
+
+        <div>
+
+            <label>
+                PRICE SOURCE
+            </label>
+
+            <div class="source">
+                Google Finance
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================================================
+         SUMMARY CARDS
+         ========================================================= -->
+
+    <section class="cards">
+
+        <div>
+
+            <small>
+                BREAKOUT STOCKS
+            </small>
+
+            <b id="breakouts">
+                0
+            </b>
+
+        </div>
+
+
+        <div>
+
+            <small>
+                STOCKS SCANNED
+            </small>
+
+            <b id="scanned">
+                0
+            </b>
+
+        </div>
+
+
+        <div>
+
+            <small>
+                AVG % GAIN
+            </small>
+
+            <b id="avg">
+                0.00%
+            </b>
+
+        </div>
+
+
+        <div>
+
+            <small>
+                TOP GAINER
+            </small>
+
+            <b id="top">
+                -
+            </b>
+
+        </div>
+
+    </section>
+
+
+    <!-- =========================================================
+         STOCK TABLE
+         ========================================================= -->
+
+    <section class="table-card">
+
+        <!--
+            IMPORTANT:
+            Keep this ID/class structure because your existing
+            app_stream.js uses stockTableBody.
+        -->
+
+        <div class="scroll desktop-stock-table">
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <!-- DATE -->
+
+                        <th
+                            id="dateHeader"
+                            class="sortable"
+                            onclick="sortScanResults('date')"
+                        >
+
+                            DATE
+
+                            <span id="dateSort">
+                                ↕
+                            </span>
+
+                        </th>
+
+
+                        <!-- SYMBOL -->
+
+                        <th>
+                            SYMBOL
+                        </th>
+
+
+                        <!-- STOCK -->
+
+                        <th>
+                            STOCK
+                        </th>
+
+
+                        <!-- EXCHANGE -->
+
+                        <th>
+                            EXCHANGE
+                        </th>
+
+
+                        <!-- BREAKOUT -->
+
+                        <th>
+                            BREAKOUT LEVEL
+                        </th>
+
+
+                        <!-- STOP LOSS -->
+
+                        <th>
+                            STOP LOSS
+                        </th>
+
+
+                        <!-- CURRENT PRICE -->
+
+                        <th>
+                            CURRENT PRICE
+                        </th>
+
+
+                        <!-- % DIFFERENCE -->
+
+                        <th
+                            id="percentHeader"
+                            class="sortable-header"
+                            title="Click to sort by % Difference"
+                            onclick="sortScanResults('percent_diff')"
+                        >
+
+                            % DIFF
+
+                            <span id="percentSort">
+                                ↕
+                            </span>
+
+                        </th>
+
+
+                        <!-- YOUTUBER -->
+
+                        <th>
+                            YOUTUBER
+                        </th>
+
+
+                        <!-- ADVISOR -->
+
+                        <th>
+                            ADVISOR
+                        </th>
+
+
+                        <!-- CATEGORY -->
+
+                        <th>
+                            CATEGORY
+                        </th>
+
+
+                        <!-- STATUS -->
+
+                        <th>
+                            STATUS
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <!--
+                    DO NOT CHANGE THIS ID.
+
+                    app_stream.js currently writes the stock rows
+                    into this element.
+                -->
+
+                <tbody id="stockTableBody">
+                </tbody>
+
+            </table>
+
+        </div>
+
+
+        <!-- =====================================================
+             MOBILE STOCK AREA
+
+             This container is intentionally present now so that
+             we can add mobile stock cards in the next step.
+
+             Your existing JavaScript currently populates
+             #stockTableBody, so we are NOT hiding the desktop
+             table until the JavaScript mobile renderer is added.
+             ===================================================== -->
+
+        <div
+            id="mobileStockList"
+            class="mobile-stock-list"
+        >
+        </div>
+
+
+        <!-- =====================================================
+             TABLE FOOTER / PAGINATION
+             ===================================================== -->
+
+        <footer>
+
+            <span id="count">
+                0 stocks
+            </span>
+
+
+            <span class="pagination">
+
+                <button
+                    id="prev"
+                    type="button"
+                    aria-label="Previous page"
+                >
+                    ‹
+                </button>
+
+
+                <span id="page">
+                    1 / 1
+                </span>
+
+
+                <button
+                    id="next"
+                    type="button"
+                    aria-label="Next page"
+                >
+                    ›
+                </button>
+
+            </span>
+
+        </footer>
+
+    </section>
+
+
+    <!-- =========================================================
+         ADD / EDIT STOCK MODAL
+         ========================================================= -->
+
+    <div
+        id="modal"
+        class="modal"
+    >
+
+        <div class="dialog">
+
+
+            <!-- MODAL HEADER -->
+
+            <div class="dialog-head">
+
+                <h2 id="formTitle">
+                    Add Stock
+                </h2>
+
+
+                <button
+                    id="close"
+                    class="x"
+                    type="button"
+                    aria-label="Close"
+                >
+                    ×
+                </button>
+
+            </div>
+
+
+            <!-- FORM -->
+
+            <form id="form">
+
+                <input
+                    type="hidden"
+                    id="id"
+                >
+
+
+                <div class="formgrid">
+
+
+                    <!-- DATE -->
+
+                    <label>
+                        Date
+
+                        <input
+                            id="date"
+                            type="date"
+                            required
+                        >
+
+                    </label>
+
+
+                    <!-- SYMBOL -->
+
+                    <label>
+                        Symbol
+
+                        <input
+                            id="symbol"
+                            required
+                        >
+
+                    </label>
+
+
+                    <!-- STOCK NAME -->
+
+                    <label>
+                        Stock Name
+
+                        <input
+                            id="stock_name"
+                            required
+                        >
+
+                    </label>
+
+
+                    <!-- EXCHANGE -->
+
+                    <label>
+                        Exchange
+
+                        <input
+                            id="exchange"
+                            value="NSE"
+                            required
+                        >
+
+                    </label>
+
+
+                    <!-- BREAKOUT LEVEL -->
+
+                    <label>
+                        Breakout Level
+
+                        <input
+                            id="breakout_level"
+                            type="number"
+                            step="0.01"
+                            required
+                        >
+
+                    </label>
+
+
+                    <!-- STOP LOSS -->
+
+                    <label>
+                        StopLoss
+
+                        <input
+                            id="stoploss"
+                            type="number"
+                            step="0.01"
+                            required
+                        >
+
+                    </label>
+
+
+                    <!-- CURRENT PRICE -->
+
+                    <label>
+                        Current Price
+
+                        <input
+                            id="current_price"
+                            type="number"
+                            step="0.01"
+                        >
+
+                    </label>
+
+
+                    <!-- YOUTUBER -->
+
+                    <label>
+                        YouTuber
+
+                        <input
+                            id="youtuber"
+                        >
+
+                    </label>
+
+
+                    <!-- ADVISOR -->
+
+                    <label>
+                        Advisor
+
+                        <input
+                            id="advisor"
+                        >
+
+                    </label>
+
+
+                    <!-- CATEGORY -->
+
+                    <label>
+                        Category
+
+                        <input
+                            id="categoryForm"
+                            list="catlist"
+                            required
+                        >
+
+                    </label>
+
+                </div>
+
+
+                <!-- CATEGORY LIST -->
+
+                <datalist id="catlist">
+                </datalist>
+
+
+                <!-- FORM ACTIONS -->
+
+                <div class="form-actions">
+
+                    <button
+                        type="button"
+                        id="cancel"
+                        class="secondary"
+                    >
+                        Cancel
+                    </button>
+
+
+                    <button
+                        type="submit"
+                    >
+                        Save
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
     </div>
 
-    <script src="{{ url_for('static', filename='js/app_stream.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/app_crud.js') }}"></script>
+
+    <!-- =========================================================
+         TOAST
+         ========================================================= -->
+
+    <div id="toast">
+    </div>
+
+
+</div>
+
+
+<!-- =============================================================
+     JAVASCRIPT
+     ============================================================= -->
+
+<script
+    src="{{ url_for('static', filename='js/app_stream.js') }}"
+></script>
+
+<script
+    src="{{ url_for('static', filename='js/app_crud.js') }}"
+></script>
+
+
 </body>
+
 </html>
+
