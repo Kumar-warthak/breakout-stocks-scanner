@@ -23,7 +23,7 @@ def get_stock_price(symbol: str, exchange: str = "NSE"):
         )
     }
 
-    resp = requests.get(url, headers=headers)
+    resp = requests.get(url, headers=headers,timeout=(5, 10))
     resp.raise_for_status()
 
     soup = BeautifulSoup(resp.text, "html.parser")
