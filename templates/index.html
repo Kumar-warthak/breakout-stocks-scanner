@@ -340,11 +340,31 @@
              table until the JavaScript mobile renderer is added.
              ===================================================== -->
 
-        <div
-            id="mobileStockList"
-            class="mobile-stock-list"
-        >
-        </div>
+       <div class="mobile-sort-bar">
+
+    <button
+        type="button"
+        id="mobileDateSort"
+        class="mobile-sort-btn"
+    >
+        DATE <span id="mobileDateSortIcon">↕</span>
+    </button>
+
+    <button
+        type="button"
+        id="mobilePercentSort"
+        class="mobile-sort-btn"
+    >
+        % DIFF <span id="mobilePercentSortIcon">↕</span>
+    </button>
+
+</div>
+
+<div
+    id="mobileStockList"
+    class="mobile-stock-list"
+>
+</div>
 
 
         <!-- =====================================================
