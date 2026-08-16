@@ -1015,15 +1015,7 @@ def get_stats():
             len(rows),
 
         "stocks_scanned":
-            sum(
-
-                item["current_price"]
-                is not None
-
-                for item
-                in items
-
-            ),
+            len(items),
 
         "breakout_stocks":
             len(
