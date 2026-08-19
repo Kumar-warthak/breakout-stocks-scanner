@@ -317,15 +317,6 @@ class StockMaster(db.Model):
         onupdate=datetime.utcnow
     )
 
-    __table_args__ = (
-
-        db.UniqueConstraint(
-            "symbol",
-            "exchange",
-            name="uq_symbol_exchange"
-        ),
-
-    )
 
 
 # ============================================================
@@ -1914,50 +1905,26 @@ def delete_stock(stock_id):
 def upload_file():
 
     uploaded_file = (
-        request.files.get(
-            "file"
-        )
+        request.files.get("file")
     )
 
     if not uploaded_file:
-
         return jsonify({
-
-            "success":
-                False,
-
-            "message":
-                "Please select a file."
-
+            "success": False,
+            "message": "Please select a file."
         }), 400
 
     filename = (
-        uploaded_file.filename
-        or ""
+        uploaded_file.filename or ""
     ).lower()
 
     if not (
-
-        filename.endswith(
-            ".xlsx"
-        )
-
-        or
-
-        filename.endswith(
-            ".csv"
-        )
-
+        filename.endswith(".xlsx")
+        or filename.endswith(".csv")
     ):
-
         return jsonify({
-
-            "success":
-                False,
-
-            "message":
-                "Only XLSX and CSV files are supported."
-
+            "success": False,
+            "message": "Only XLSX and CSV files are supported."
         }), 400
 
     try:
@@ -1968,38 +1935,24 @@ def upload_file():
         # EXCEL
         # ====================================================
 
-        if filename.endswith(
-            ".xlsx"
-        ):
+        if filename.endswith(".xlsx"):
 
             workbook = load_workbook(
-
                 uploaded_file,
-
                 read_only=True,
-
                 data_only=True
-
             )
 
-            worksheet = (
-                workbook.active
-            )
+            worksheet = workbook.active
 
             values = list(
                 worksheet.values
             )
 
             if not values:
-
                 return jsonify({
-
-                    "success":
-                        False,
-
-                    "message":
-                        "Excel file is empty."
-
+                    "success": False,
+                    "message": "Excel file is empty."
                 }), 400
 
             headers = []
@@ -2013,41 +1966,29 @@ def upload_file():
                 header = (
                     header
                     .lower()
-                    .replace(
-                        "\n",
-                        " "
-                    )
+                    .replace("\n", " ")
                     .strip()
                 )
 
-                headers.append(
-                    header
-                )
+                headers.append(header)
 
             for row_number, row_values in enumerate(
-
                 values[1:],
-
                 start=2
-
             ):
 
                 row = dict(
-
                     zip(
                         headers,
                         row_values
                     )
-
                 )
 
                 rows.append(
-
                     (
                         row_number,
                         row
                     )
-
                 )
 
         # ====================================================
@@ -2056,14 +1997,9 @@ def upload_file():
 
         else:
 
-            text_file = (
-                io.TextIOWrapper(
-
-                    uploaded_file.stream,
-
-                    encoding="utf-8-sig"
-
-                )
+            text_file = io.TextIOWrapper(
+                uploaded_file.stream,
+                encoding="utf-8-sig"
             )
 
             reader = csv.DictReader(
@@ -2071,11 +2007,8 @@ def upload_file():
             )
 
             for row_number, row in enumerate(
-
                 reader,
-
                 start=2
-
             ):
 
                 cleaned = {}
@@ -2083,52 +2016,35 @@ def upload_file():
                 for key, value in row.items():
 
                     cleaned[
-                        clean_string(
-                            key
-                        )
+                        clean_string(key)
                         .lower()
                         .strip()
                     ] = value
 
                 rows.append(
-
                     (
                         row_number,
                         cleaned
                     )
-
                 )
 
         # ====================================================
         # COLUMN HELPER
         # ====================================================
 
-        def get_value(
-            row,
-            *names
-        ):
+        def get_value(row, *names):
 
             for name in names:
 
                 normalized = (
-
-                    clean_string(
-                        name
-                    )
+                    clean_string(name)
                     .lower()
-                    .replace(
-                        "\n",
-                        " "
-                    )
+                    .replace("\n", " ")
                     .strip()
-
                 )
 
                 if normalized in row:
-
-                    return row[
-                        normalized
-                    ]
+                    return row[normalized]
 
             return None
 
@@ -2137,69 +2053,191 @@ def upload_file():
         # ====================================================
 
         added = 0
-        updated = 0
         skipped = 0
-
         errors = []
 
         # ====================================================
         # PROCESS ROWS
+        #
+        # IMPORTANT:
+        # NO DUPLICATE CHECK.
+        #
+        # Every valid row is INSERTED as a NEW record.
+        #
+        # A row is skipped ONLY when:
+        #   1. Date is blank
+        #   2. Symbol is blank
+        #   3. BreakOut Level is blank
         # ====================================================
 
         for row_number, row in rows:
 
+            # ------------------------------------------------
+            # CHECK WHETHER ENTIRE ROW IS BLANK
+            # ------------------------------------------------
+
+            if not any(
+                value is not None
+                and str(value).strip() != ""
+                for value in row.values()
+            ):
+                skipped += 1
+
+                errors.append({
+                    "row": row_number,
+                    "symbol": "",
+                    "error": "Entire row is blank"
+                })
+
+                continue
+
             try:
 
+                # ------------------------------------------------
+                # SYMBOL
+                # ------------------------------------------------
+
+                symbol_value = get_value(
+                    row,
+                    "symbol"
+                )
+
                 symbol = clean_string(
-
-                    get_value(
-                        row,
-                        "symbol"
-                    )
-
+                    symbol_value
                 ).upper()
 
                 if not symbol:
 
+                    skipped += 1
+
+                    errors.append({
+                        "row": row_number,
+                        "symbol": "",
+                        "error": "Symbol is blank"
+                    })
+
                     continue
 
-                exchange = clean_string(
+                # ------------------------------------------------
+                # DATE
+                # ------------------------------------------------
 
+                date_value = get_value(
+                    row,
+                    "date"
+                )
+
+                if (
+                    date_value is None
+                    or str(date_value).strip() == ""
+                ):
+
+                    skipped += 1
+
+                    errors.append({
+                        "row": row_number,
+                        "symbol": symbol,
+                        "error": "Date is blank"
+                    })
+
+                    continue
+
+                try:
+
+                    stock_date = parse_date(
+                        date_value
+                    )
+
+                except Exception as date_error:
+
+                    skipped += 1
+
+                    errors.append({
+                        "row": row_number,
+                        "symbol": symbol,
+                        "error": str(date_error)
+                    })
+
+                    continue
+
+                # ------------------------------------------------
+                # EXCHANGE
+                # ------------------------------------------------
+
+                exchange = clean_string(
                     get_value(
                         row,
                         "exchange"
                     )
-
                     or "NSE"
-
                 ).upper()
 
-                stock_date = parse_date(
-
-                    get_value(
-                        row,
-                        "date"
-                    )
-
-                )
+                # ------------------------------------------------
+                # STOCK NAME
+                # ------------------------------------------------
 
                 stock_name = clean_string(
-
                     get_value(
-
                         row,
-
                         "stocks",
-
                         "stock",
-
                         "stock name",
-
                         "stock_name"
+                    )
+                )
 
+                # ------------------------------------------------
+                # BREAKOUT LEVEL
+                # ------------------------------------------------
+
+                breakout_value = get_value(
+                    row,
+                    "breakout level",
+                    "breakout_level",
+                    "breakout"
+                )
+
+                if (
+                    breakout_value is None
+                    or str(breakout_value).strip() == ""
+                ):
+
+                    skipped += 1
+
+                    errors.append({
+                        "row": row_number,
+                        "symbol": symbol,
+                        "error": "BreakOut Level is blank"
+                    })
+
+                    continue
+
+                try:
+
+                    breakout_level = parse_required_float(
+                        breakout_value,
+                        "BreakOut Level",
+                        row_number
                     )
 
-                )
+                except Exception as breakout_error:
+
+                    skipped += 1
+
+                    errors.append({
+                        "row": row_number,
+                        "symbol": symbol,
+                        "error": str(breakout_error)
+                    })
+
+                    continue
+
+                # ------------------------------------------------
+                # STOCK NAME
+                #
+                # Database requires this field.
+                # Keep the existing behavior for valid rows.
+                # ------------------------------------------------
 
                 if not stock_name:
 
@@ -2207,293 +2245,154 @@ def upload_file():
                         "Stocks/Stock Name is blank"
                     )
 
-                breakout_level = (
+                # ------------------------------------------------
+                # STOP LOSS
+                #
+                # Database column is NOT NULL.
+                # ------------------------------------------------
 
-                    parse_required_float(
-
-                        get_value(
-
-                            row,
-
-                            "breakout level",
-
-                            "breakout_level",
-
-                            "breakout"
-
-                        ),
-
-                        "BreakOut Level",
-
-                        row_number
-
-                    )
-
-                )
-
-                stoploss = (
-
-                    parse_required_float(
-
-                        get_value(
-
-                            row,
-
-                            "stoploss",
-
-                            "stop loss",
-
-                            "stop_loss"
-
-                        ),
-
-                        "StopLoss",
-
-                        row_number
-
-                    )
-
-                )
-
-                current_price_value = (
-
+                stoploss = parse_required_float(
                     get_value(
-
                         row,
-
-                        "current price",
-
-                        "current_price",
-
-                        "currentprice"
-
-                    )
-
+                        "stoploss",
+                        "stop loss",
+                        "stop_loss"
+                    ),
+                    "StopLoss",
+                    row_number
                 )
 
-                current_price = (
+                # ------------------------------------------------
+                # CURRENT PRICE
+                # ------------------------------------------------
 
-                    parse_optional_float(
-
-                        current_price_value
-
-                    )
-
+                current_price_value = get_value(
+                    row,
+                    "current price",
+                    "current_price",
+                    "currentprice"
                 )
+
+                current_price = parse_optional_float(
+                    current_price_value
+                )
+
+                # ------------------------------------------------
+                # YOUTUBER
+                # ------------------------------------------------
 
                 youtuber = clean_string(
-
                     get_value(
-
                         row,
-
                         "you tuber",
-
                         "youtuber",
-
                         "youtube",
-
                         "you_tuber"
-
                     )
-
                 )
+
+                # ------------------------------------------------
+                # ADVISOR
+                # ------------------------------------------------
 
                 advisor = clean_string(
-
                     get_value(
-
                         row,
-
                         "advisor"
-
                     )
-
                 )
 
+                # ------------------------------------------------
+                # CATEGORY
+                # ------------------------------------------------
+
                 category = clean_string(
-
                     get_value(
-
                         row,
-
                         "category"
-
                     )
-
                 )
 
                 if not category:
-
                     category = "Breakouts"
 
-                stock = (
+                # =================================================
+                # ALWAYS INSERT
+                #
+                # NO EXISTING STOCK LOOKUP.
+                # NO DUPLICATE FILTER.
+                #
+                # Same symbol + same date is allowed.
+                # Same symbol + same date + same breakout is allowed.
+                # =================================================
 
-                    StockMaster.query
-
-                    .filter_by(
-
-                        symbol=symbol,
-
-                        exchange=exchange
-
-                    )
-
-                    .first()
-
+                stock = StockMaster(
+                    date=stock_date,
+                    symbol=symbol,
+                    stock_name=stock_name,
+                    exchange=exchange,
+                    breakout_level=breakout_level,
+                    stoploss=stoploss,
+                    current_price=current_price,
+                    youtuber=youtuber,
+                    advisor=advisor,
+                    category=category
                 )
 
-                # =================================================
-                # INSERT
-                # =================================================
+                db.session.add(stock)
 
-                if stock is None:
+                # Flush this row so a database error is caught
+                # for this row instead of affecting the whole batch.
+                db.session.flush()
+                db.session.commit()
 
-                    stock = StockMaster(
-
-                        date=stock_date,
-
-                        symbol=symbol,
-
-                        stock_name=stock_name,
-
-                        exchange=exchange,
-
-                        breakout_level=
-                            breakout_level,
-
-                        stoploss=
-                            stoploss,
-
-                        current_price=
-                            current_price,
-
-                        youtuber=
-                            youtuber,
-
-                        advisor=
-                            advisor,
-
-                        category=
-                            category
-
-                    )
-
-                    db.session.add(
-                        stock
-                    )
-
-                    added += 1
-
-                # =================================================
-                # UPDATE
-                # =================================================
-
-                else:
-
-                    stock.date = (
-                        stock_date
-                    )
-
-                    stock.stock_name = (
-                        stock_name
-                    )
-
-                    stock.exchange = (
-                        exchange
-                    )
-
-                    stock.breakout_level = (
-                        breakout_level
-                    )
-
-                    stock.stoploss = (
-                        stoploss
-                    )
-
-                    # Preserve existing current price
-                    # when Excel doesn't contain one.
-
-                    if current_price is not None:
-
-                        stock.current_price = (
-                            current_price
-                        )
-
-                    stock.youtuber = (
-                        youtuber
-                    )
-
-                    stock.advisor = (
-                        advisor
-                    )
-
-                    stock.category = (
-                        category
-                    )
-
-                    stock.updated_at = (
-                        datetime.utcnow()
-                    )
-
-                    updated += 1
+                added += 1
 
             except Exception as row_error:
+
+                # Roll back only the current transaction state.
+                # No valid rows already flushed are discarded because
+                # each row is committed separately below.
+                db.session.rollback()
 
                 skipped += 1
 
                 errors.append({
-
-                    "row":
-                        row_number,
-
-                    "symbol":
-                        clean_string(
-
-                            get_value(
-                                row,
-                                "symbol"
-                            )
-
-                        ),
-
-                    "error":
-                        str(
-                            row_error
+                    "row": row_number,
+                    "symbol": clean_string(
+                        get_value(
+                            row,
+                            "symbol"
                         )
-
+                    ).upper(),
+                    "error": str(row_error)
                 })
 
-        db.session.commit()
+        # ====================================================
+        # NOTE:
+        # Because rows are committed individually below, there
+        # is no final batch commit here.
+        # ====================================================
 
-        app.config[
-            "LIVE_RESULTS"
-        ] = {}
+        app.config["LIVE_RESULTS"] = {}
 
         return jsonify({
 
-            "success":
-                True,
+            "success": True,
 
-            "added":
-                added,
+            "added": added,
 
-            "updated":
-                updated,
+            "updated": 0,
 
-            "skipped":
-                skipped,
+            "skipped": skipped,
 
-            "errors":
-                errors,
+            "errors": errors,
 
-            "message":
-                (
-                    f"Upload completed. "
-                    f"{added} added, "
-                    f"{updated} updated, "
-                    f"{skipped} skipped."
-                )
+            "message": (
+                f"Upload completed. "
+                f"{added} inserted, "
+                f"{skipped} skipped."
+            )
 
         })
 
@@ -2503,11 +2402,9 @@ def upload_file():
 
         return jsonify({
 
-            "success":
-                False,
+            "success": False,
 
-            "message":
-                f"Upload failed: {error}"
+            "message": f"Upload failed: {error}"
 
         }), 400
 
@@ -2724,4 +2621,3 @@ if __name__ == "__main__":
         debug=False
 
     )
-
